@@ -52,15 +52,9 @@ class OptionTest < Minitest::Spec
       let(:option) { Trailblazer::Option(WITH_POSITIONAL_AND_KEYWORDS) }
 
       it "-> {} lambda" do
-        assert_result option.(positional, **{keyword_arguments: keywords})
-      end
+        step = Step.new
 
-      it "allows passing a block, too" do
-        assert_result option.(positional, **{keyword_arguments: keywords}, &block), block
-      end
-
-      it "doesn't mind :exec_context" do
-        assert_result option.(positional, keyword_arguments: keywords, exec_context: "bogus")
+        assert_result option.(positional, **{keyword_arguments: keywords, exec_context: step})
       end
     end
 
@@ -125,6 +119,52 @@ class OptionTest < Minitest::Spec
       option = Trailblazer::Option(WithPositionals)
 
       assert_result_pos option.(*positionals, exec_context: "something")
+    end
+  end
+
+  describe "keywords" do
+    def assert_result_kws(result)
+      _(keywords).must_equal({ a: 1, b: 2, c: 3, d: 4 })
+      _(result).must_equal([1, 2, { c: 3, d: 4 }])
+    end
+
+    # In Ruby < 3.0, {*args} will grab both positionals and keyword arguments.
+    class Step
+      def with_keywords(a:, b:, **rest)
+        [a, b, rest]
+      end
+    end
+
+    WITH_KEYWORDS = ->(a:, b:, **rest) do
+      [a, b, rest]
+    end
+
+    class WithKeywords
+      def self.call(a:, b:, **rest)
+        [a, b, rest]
+      end
+    end
+
+    let(:keywords) { { a: 1, b: 2, c: 3, d: 4 } }
+
+    it ":method" do
+      step = Step.new
+
+      option = Trailblazer::Option(:with_keywords)
+
+      assert_result_kws option.(keyword_arguments: keywords, exec_context: step)
+    end
+
+    it "-> {} lambda" do
+      option = Trailblazer::Option(WITH_KEYWORDS)
+
+      assert_result_kws option.(keyword_arguments: keywords, exec_context: "something")
+    end
+
+    it "callable" do
+      option = Trailblazer::Option(WithKeywords)
+
+      assert_result_kws option.(keyword_arguments: keywords, exec_context: "something")
     end
   end
 end
